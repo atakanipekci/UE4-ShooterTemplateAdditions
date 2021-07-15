@@ -53,8 +53,21 @@ void AShooterProjectile::PostInitializeComponents()
 		OwnerWeapon->ApplyWeaponConfig(WeaponConfig);
 	}
 	MovementComp->ProjectileGravityScale = WeaponConfig.ProjectileGravityScale;
-	SetLifeSpan( WeaponConfig.ProjectileLife );
+	//SetLifeSpan( WeaponConfig.ProjectileLife );
 	MyController = GetInstigatorController();
+}
+
+void AShooterProjectile::BeginPlay()
+{
+	Super::BeginPlay();
+	LifeTimeTimer = WeaponConfig.ProjectileLife;
+}
+
+void AShooterProjectile::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	CountDownLife(DeltaSeconds);
+	
 }
 
 void AShooterProjectile::InitVelocity(FVector& ShootDirection)
@@ -74,33 +87,61 @@ void AShooterProjectile::OnImpact(const FHitResult& HitResult)
 	}
 }
 
-void AShooterProjectile::Explode(const FHitResult& Impact)
+inline void AShooterProjectile::CountDownLife(float DeltaSeconds)
 {
+	LifeTimeTimer -= DeltaSeconds;
+	if(LifeTimeTimer <= 0 && GetLocalRole() == ROLE_Authority && !bExploded)
+	{
+		Explode(GetActorLocation());
+		DisableAndDestroy();
+	}
+}
+
+AShooterExplosionEffect* const AShooterProjectile::Explosion(const FVector& ExplosionPoint, const FRotator& Rotation)
+{
+	bExploded = true;
+	
 	if (ParticleComp)
 	{
 		ParticleComp->Deactivate();
 	}
 
-	// effects and damage origin shouldn't be placed inside mesh at impact point
-	const FVector NudgedImpactLocation = Impact.ImpactPoint + Impact.ImpactNormal * 10.0f;
-
 	if (WeaponConfig.ExplosionDamage > 0 && WeaponConfig.ExplosionRadius > 0 && WeaponConfig.DamageType)
 	{
-		UGameplayStatics::ApplyRadialDamage(this, WeaponConfig.ExplosionDamage, NudgedImpactLocation, WeaponConfig.ExplosionRadius, WeaponConfig.DamageType, TArray<AActor*>(), this, MyController.Get());
+		UGameplayStatics::ApplyRadialDamage(this, WeaponConfig.ExplosionDamage, ExplosionPoint, WeaponConfig.ExplosionRadius, WeaponConfig.DamageType, TArray<AActor*>(), this, MyController.Get());
 	}
 
 	if (ExplosionTemplate)
 	{
-		FTransform const SpawnTransform(Impact.ImpactNormal.Rotation(), NudgedImpactLocation);
+		FTransform const SpawnTransform(Rotation, ExplosionPoint);
 		AShooterExplosionEffect* const EffectActor = GetWorld()->SpawnActorDeferred<AShooterExplosionEffect>(ExplosionTemplate, SpawnTransform);
-		if (EffectActor)
-		{
-			EffectActor->SurfaceHit = Impact;
-			UGameplayStatics::FinishSpawningActor(EffectActor, SpawnTransform);
-		}
+		return EffectActor;
 	}
+	
+	return nullptr;
+}
 
-	bExploded = true;
+void AShooterProjectile::Explode(const FHitResult& Impact)
+{
+	// effects and damage origin shouldn't be placed inside mesh at impact point
+	const FVector NudgedImpactLocation = Impact.ImpactPoint + Impact.ImpactNormal * 10.0f;
+	AShooterExplosionEffect* const EffectActor = Explosion(NudgedImpactLocation, Impact.ImpactNormal.Rotation());
+	if(EffectActor)
+	{
+		EffectActor->SurfaceHit = Impact;
+		FTransform const SpawnTransform(FRotator{}, NudgedImpactLocation);
+		UGameplayStatics::FinishSpawningActor(EffectActor, SpawnTransform);
+	}
+}
+
+void AShooterProjectile::Explode(const FVector& ExplosionPoint)
+{
+	AShooterExplosionEffect* const EffectActor = Explosion(ExplosionPoint, FRotator{});
+	if(EffectActor)
+	{
+		FTransform const SpawnTransform(FRotator{}, ExplosionPoint);
+		UGameplayStatics::FinishSpawningActor(EffectActor, SpawnTransform);
+	}
 }
 
 void AShooterProjectile::DisableAndDestroy()
