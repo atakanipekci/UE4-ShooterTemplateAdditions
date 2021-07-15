@@ -2,6 +2,8 @@
 
 #include "ShooterGame.h"
 #include "Weapons/ShooterProjectile.h"
+
+#include "LOGHelper.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Effects/ShooterExplosionEffect.h"
 
@@ -50,7 +52,7 @@ void AShooterProjectile::PostInitializeComponents()
 	{
 		OwnerWeapon->ApplyWeaponConfig(WeaponConfig);
 	}
-
+	MovementComp->ProjectileGravityScale = WeaponConfig.ProjectileGravityScale;
 	SetLifeSpan( WeaponConfig.ProjectileLife );
 	MyController = GetInstigatorController();
 }

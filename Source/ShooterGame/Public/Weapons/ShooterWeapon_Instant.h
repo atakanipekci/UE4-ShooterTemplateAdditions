@@ -4,7 +4,7 @@
 
 #include "ShooterWeapon.h"
 #include "ShooterWeapon_Instant.generated.h"
-//adsgfsdgasd
+
 class AShooterImpactEffect;
 
 USTRUCT()
