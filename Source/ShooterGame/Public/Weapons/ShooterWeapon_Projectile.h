@@ -3,6 +3,7 @@
 #pragma once
 
 #include "ShooterWeapon.h"
+#include "SplineActor.h"
 #include "GameFramework/DamageType.h" // for UDamageType::StaticClass()
 #include "ShooterWeapon_Projectile.generated.h"
 
@@ -23,6 +24,10 @@ struct FProjectileWeaponData
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	float ProjectileGravityScale;
 
+	/** Initial speed for the projectile */
+	UPROPERTY(EditDefaultsOnly, Category=Projectile)
+	float ProjectileInitialSpeed;
+
 	/** damage at impact point */
 	UPROPERTY(EditDefaultsOnly, Category=WeaponStat)
 	int32 ExplosionDamage;
@@ -42,6 +47,7 @@ struct FProjectileWeaponData
 		ProjectileLife = 10.0f;
 		ExplosionDamage = 100;
 		ExplosionRadius = 300.0f;
+		ProjectileInitialSpeed = 2000.0f;
 		ProjectileGravityScale = 0.f;
 		DamageType = UDamageType::StaticClass();
 	}
@@ -55,6 +61,9 @@ class AShooterWeapon_Projectile : public AShooterWeapon
 
 	/** apply config on projectile */
 	void ApplyWeaponConfig(FProjectileWeaponData& Data);
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TMap<ESplineMeshType, FSplineMeshDetails> TrajectorySplineMap;
 
 protected:
 
@@ -73,7 +82,20 @@ protected:
 	/** [local] weapon specific fire implementation */
 	virtual void FireWeapon() override;
 
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaSeconds) override;
+
+	/** Draw Trajectory for the projectile this weapon uses */
+	void DrawTrajectory();
+	/** Clear Trajectory */
+	void ClearTrajectory();
+
 	/** spawn projectile on server */
 	UFUNCTION(reliable, server, WithValidation)
 	void ServerFireProjectile(FVector Origin, FVector_NetQuantizeNormal ShootDir);
+
+private:
+	UPROPERTY()
+	class ASplineActor* TrajectorySplineActor = nullptr;
 };

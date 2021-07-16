@@ -64,6 +64,80 @@ void AShooterWeapon_Projectile::FireWeapon()
 	ServerFireProjectile(Origin, ShootDir);
 }
 
+void AShooterWeapon_Projectile::BeginPlay()
+{
+	Super::BeginPlay();
+	if(GetLocalRole() == ROLE_Authority)
+	{
+		TrajectorySplineActor = static_cast<ASplineActor*>(GetWorld()->SpawnActor<ASplineActor>(FVector::ZeroVector,FRotator::ZeroRotator,FActorSpawnParameters{}));
+	}
+
+	if(TrajectorySplineActor)
+	{
+		TrajectorySplineActor->SetActorScale3D(FVector{0.1,0.1,0.1});
+		TrajectorySplineActor->ClearNodes();
+		TrajectorySplineActor->SplineMeshMap = TrajectorySplineMap;
+		TrajectorySplineActor->UpdateSpline();
+	}
+}
+
+void AShooterWeapon_Projectile::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if(GetPawnOwner() && !GetPawnOwner()->IsTargeting() && !GetPawnOwner()->IsRunning())
+	{
+		DrawTrajectory();
+	}
+	else
+	{
+		ClearTrajectory();
+	}
+}
+
+void AShooterWeapon_Projectile::DrawTrajectory()
+{
+	if(TrajectorySplineActor && ProjectileConfig.ProjectileGravityScale != 0)
+	{
+		FPredictProjectilePathResult ProjectileResult;
+		FPredictProjectilePathParams ProjectileParams;
+		
+		FVector ShootDir = GetAdjustedAim();
+		FVector Origin = GetMuzzleLocation();
+
+		ProjectileParams.StartLocation = Origin;
+		ProjectileParams.LaunchVelocity = ShootDir * ProjectileConfig.ProjectileInitialSpeed;
+		ProjectileParams.TraceChannel = COLLISION_PROJECTILE;
+		ProjectileParams.ProjectileRadius = 5;
+		ProjectileParams.bTraceWithCollision = true;
+		ProjectileParams.bTraceWithChannel = true;
+		ProjectileParams.MaxSimTime = ProjectileConfig.ProjectileLife;
+		ProjectileParams.OverrideGravityZ = GetWorld()->GetGravityZ()*ProjectileConfig.ProjectileGravityScale;
+
+		UGameplayStatics::PredictProjectilePath(GetWorld(), ProjectileParams, ProjectileResult);
+
+		//ProjectileParams.LaunchVelocity = ProjectileConfig.ProjectileInitialSpeed;
+		TrajectorySplineActor->SetActorHiddenInGame(true);
+		TrajectorySplineActor->ClearNodes();
+		
+		for(int i = 0; i < ProjectileResult.PathData.Num(); i++)
+		{
+			TrajectorySplineActor->AddNode(ProjectileResult.PathData[i].Location);
+		}
+		TrajectorySplineActor->UpdateSpline();
+		TrajectorySplineActor->SetActorHiddenInGame(false);
+	}
+}
+
+void AShooterWeapon_Projectile::ClearTrajectory()
+{
+	if(TrajectorySplineActor == nullptr)
+	{
+		return;
+	}
+	TrajectorySplineActor->ClearNodes();
+	TrajectorySplineActor->UpdateSpline();
+}
+
 bool AShooterWeapon_Projectile::ServerFireProjectile_Validate(FVector Origin, FVector_NetQuantizeNormal ShootDir)
 {
 	return true;

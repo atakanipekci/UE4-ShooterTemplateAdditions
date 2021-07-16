@@ -53,6 +53,7 @@ void AShooterProjectile::PostInitializeComponents()
 		OwnerWeapon->ApplyWeaponConfig(WeaponConfig);
 	}
 	MovementComp->ProjectileGravityScale = WeaponConfig.ProjectileGravityScale;
+	MovementComp->InitialSpeed = WeaponConfig.ProjectileInitialSpeed;
 	//SetLifeSpan( WeaponConfig.ProjectileLife );
 	MyController = GetInstigatorController();
 }
