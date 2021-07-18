@@ -4,6 +4,7 @@
 #include "Weapons/ShooterProjectile.h"
 
 #include "LOGHelper.h"
+#include "StatusEffectFactory.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Effects/ShooterExplosionEffect.h"
 
@@ -44,7 +45,7 @@ AShooterProjectile::AShooterProjectile(const FObjectInitializer& ObjectInitializ
 void AShooterProjectile::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-	MovementComp->OnProjectileStop.AddDynamic(this, &AShooterProjectile::OnImpact);
+	MovementComp->OnProjectileStop.AddDynamic(this, &AShooterProjectile::OnStopOnImpact);
 	CollisionComp->MoveIgnoreActors.Add(GetInstigator());
 
 	AShooterWeapon_Projectile* OwnerWeapon = Cast<AShooterWeapon_Projectile>(GetOwner());
@@ -68,7 +69,6 @@ void AShooterProjectile::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	CountDownLife(DeltaSeconds);
-	
 }
 
 void AShooterProjectile::InitVelocity(FVector& ShootDirection)
@@ -79,7 +79,7 @@ void AShooterProjectile::InitVelocity(FVector& ShootDirection)
 	}
 }
 
-void AShooterProjectile::OnImpact(const FHitResult& HitResult)
+void AShooterProjectile::OnStopOnImpact(const FHitResult& HitResult)
 {
 	if (GetLocalRole() == ROLE_Authority && !bExploded)
 	{
@@ -112,13 +112,37 @@ AShooterExplosionEffect* const AShooterProjectile::Explosion(const FVector& Expl
 		UGameplayStatics::ApplyRadialDamage(this, WeaponConfig.ExplosionDamage, ExplosionPoint, WeaponConfig.ExplosionRadius, WeaponConfig.DamageType, TArray<AActor*>(), this, MyController.Get());
 	}
 
+	/* Get the overlapping actors in a sphere */
+	TArray<FOverlapResult> Overlaps;
+	/* Make sure to hit the same character only once */
+	TSet<AShooterCharacter*> HitShooterCharacters;
+	if (GetWorld() && MyController.IsValid() && MyController->GetCharacter())
+	{
+		GetWorld()->OverlapMultiByObjectType(Overlaps, ExplosionPoint, FQuat::Identity, FCollisionObjectQueryParams(FCollisionObjectQueryParams::InitType::AllDynamicObjects), FCollisionShape::MakeSphere(WeaponConfig.ExplosionRadius));
+		AShooterCharacter* OwnerCharacter = Cast<AShooterCharacter>(MyController->GetCharacter());
+		for (auto OverlapResult : Overlaps)
+		{
+			if(OverlapResult.GetActor())
+			{
+				AShooterCharacter* TargetCharacter = Cast<AShooterCharacter>(OverlapResult.GetActor());
+				if(TargetCharacter &&  !HitShooterCharacters.Contains(TargetCharacter))
+				{
+					HitShooterCharacters.Add(TargetCharacter);
+					for (auto Effect : StatusEffects)
+					{
+						TargetCharacter->ApplyStatusEffect(StatusEffectFactory::CreateEffect(Effect, OwnerCharacter, TargetCharacter));
+					}
+				}
+			}
+		}
+	}
+
 	if (ExplosionTemplate)
 	{
 		FTransform const SpawnTransform(Rotation, ExplosionPoint);
 		AShooterExplosionEffect* const EffectActor = GetWorld()->SpawnActorDeferred<AShooterExplosionEffect>(ExplosionTemplate, SpawnTransform);
 		return EffectActor;
 	}
-	
 	return nullptr;
 }
 

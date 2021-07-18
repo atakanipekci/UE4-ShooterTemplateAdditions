@@ -27,6 +27,8 @@ float UShooterCharacterMovement::GetMaxSpeed() const
 		{
 			MaxSpeed *= ShooterCharacterOwner->GetRunningSpeedModifier();
 		}
+
+		MaxSpeed *= ShooterCharacterOwner->GetSpeedModifier();
 	}
 
 	return MaxSpeed;

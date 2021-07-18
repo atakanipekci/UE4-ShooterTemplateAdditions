@@ -26,11 +26,10 @@ class AShooterProjectile : public AActor
 	/** setup velocity */
 	void InitVelocity(FVector& ShootDirection);
 
-	/** handle hit */
+	/** handle stop after hit */
 	UFUNCTION()
-	void OnImpact(const FHitResult& HitResult);
-
-private:
+	virtual void OnStopOnImpact(const FHitResult& HitResult);
+protected:
 	/** movement component */
 	UPROPERTY(VisibleDefaultsOnly, Category=Projectile)
 	UProjectileMovementComponent* MovementComp;
@@ -42,12 +41,15 @@ private:
 	UPROPERTY(VisibleDefaultsOnly, Category=Projectile)
 	UParticleSystemComponent* ParticleComp;
 
-	float LifeTimeTimer;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FStatusEffectData> StatusEffects;
 
 	/** Countdown To Explode and Destroy*/
 	inline void CountDownLife(float DeltaSeconds);
+private:
+	/** Life Time of this Projectile */
+	float LifeTimeTimer;
 
-	class AShooterExplosionEffect* const Explosion(const FVector& ExplosionPoint, const FRotator& Rotation);
 protected:
 
 	/** effects for explosion */
@@ -73,7 +75,10 @@ protected:
 	
 	/** Explode on a given position without the need to hit anything */
 	void Explode(const FVector& ExplosionPoint);
-
+	
+	/** Actual Explosion method */
+	virtual class AShooterExplosionEffect* const Explosion(const FVector& ExplosionPoint, const FRotator& Rotation);
+	
 	/** shutdown projectile and prepare for destruction */
 	void DisableAndDestroy();
 

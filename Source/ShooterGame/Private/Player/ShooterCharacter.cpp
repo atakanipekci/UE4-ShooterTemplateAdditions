@@ -9,6 +9,7 @@
 #include "Animation/AnimInstance.h"
 #include "Sound/SoundNodeLocalPlayer.h"
 #include "AudioThread.h"
+#include "LOGHelper.h"
 
 static int32 NetVisualizeRelevancyTestPoints = 0;
 FAutoConsoleVariableRef CVarNetVisualizeRelevancyTestPoints(
@@ -61,6 +62,7 @@ AShooterCharacter::AShooterCharacter(const FObjectInitializer& ObjectInitializer
 	TargetingSpeedModifier = 0.5f;
 	bIsTargeting = false;
 	RunningSpeedModifier = 1.5f;
+	SpeedModifier = 1.0f;
 	bWantsToRun = false;
 	bWantsToFire = false;
 	LowHealthPercentage = 0.5f;
@@ -1275,6 +1277,16 @@ float AShooterCharacter::GetRunningSpeedModifier() const
 	return RunningSpeedModifier;
 }
 
+void AShooterCharacter::AddSpeedModifier(float Speed)
+{
+	SpeedModifier += Speed;
+}
+
+float AShooterCharacter::GetSpeedModifier() const
+{
+	return SpeedModifier;
+}
+
 bool AShooterCharacter::IsFiring() const
 {
 	return bWantsToFire;
@@ -1300,11 +1312,39 @@ float AShooterCharacter::GetLowHealthPercentage() const
 	return LowHealthPercentage;
 }
 
+void AShooterCharacter::ApplyStatusEffect(UStatusEffect* Effect)
+{
+	if(Effect == nullptr)
+	{
+		return;
+	}
+	ActiveStatusEffects.Add(Effect);
+	Effect->Start();
+	FTimerDelegate TimerDel;
+	TimerDel.BindUFunction(this, FName("UpdateStatusEffect"), Effect);
+	GetWorldTimerManager().SetTimer(Effect->EffectTimerHandle, TimerDel, 1.0f, true);
+}
+
 void AShooterCharacter::UpdateTeamColorsAllMIDs()
 {
 	for (int32 i = 0; i < MeshMIDs.Num(); ++i)
 	{
 		UpdateTeamColors(MeshMIDs[i]);
+	}
+}
+
+void AShooterCharacter::UpdateStatusEffect(UStatusEffect* Effect)
+{
+	if(Effect == nullptr)
+	{
+		return;
+	}
+	Effect->Update();
+	if(Effect->GetEffectData().LifeTime <= 0)
+	{
+		GetWorldTimerManager().ClearTimer(Effect->EffectTimerHandle);
+		Effect->End();
+		ActiveStatusEffects.Remove(Effect);
 	}
 }
 

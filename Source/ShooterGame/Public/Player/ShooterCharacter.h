@@ -3,6 +3,8 @@
 #pragma once
 
 #include "ShooterTypes.h"
+#include "UStatusEffect.h"
+
 #include "ShooterCharacter.generated.h"
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnShooterCharacterEquipWeapon, AShooterCharacter*, AShooterWeapon* /* new */);
@@ -246,6 +248,12 @@ class AShooterCharacter : public ACharacter
 	UFUNCTION(BlueprintCallable, Category = Pawn)
 	float GetRunningSpeedModifier() const;
 
+	UFUNCTION(BlueprintCallable, Category = Pawn)
+	void AddSpeedModifier(float Speed);
+
+	UFUNCTION(BlueprintCallable, Category = Pawn)
+	float GetSpeedModifier() const;
+
 	/** get running state */
 	UFUNCTION(BlueprintCallable, Category = Pawn)
 	bool IsRunning() const;
@@ -263,6 +271,9 @@ class AShooterCharacter : public ACharacter
 	/** returns percentage of health when low health effects should start */
 	float GetLowHealthPercentage() const;
 
+	/** Apply a status effect to this character */
+	void ApplyStatusEffect(UStatusEffect* Effect);
+
 	/*
 	* Get either first or third person mesh.
 	*
@@ -277,6 +288,15 @@ private:
 	/** pawn mesh: 1st person view */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	USkeletalMeshComponent* Mesh1P;
+	
+	/** Active status effects on this character */
+	UPROPERTY()
+	TArray<UStatusEffect*> ActiveStatusEffects;
+
+	/** Update a status effect on this character */
+	UFUNCTION()
+	void UpdateStatusEffect(UStatusEffect* Effect);
+
 protected:
 
 	/** socket or bone name for attaching weapon mesh */
@@ -313,6 +333,10 @@ protected:
 	/** modifier for max movement speed */
 	UPROPERTY(EditDefaultsOnly, Category = Pawn)
 	float RunningSpeedModifier;
+
+	/** modifier for max speed */
+	UPROPERTY(EditDefaultsOnly, Category = Pawn)
+	float SpeedModifier;
 
 	/** current running state */
 	UPROPERTY(Transient, Replicated)
