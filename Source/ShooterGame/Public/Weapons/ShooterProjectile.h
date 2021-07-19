@@ -41,6 +41,7 @@ protected:
 	UPROPERTY(VisibleDefaultsOnly, Category=Projectile)
 	UParticleSystemComponent* ParticleComp;
 
+	/** The status effects this projectile will apply to targets, can be modified from BPs*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FStatusEffectData> StatusEffects;
 
@@ -70,7 +71,7 @@ protected:
 	UFUNCTION()
 	void OnRep_Exploded();
 
-	/** trigger explosion */
+	/** trigger an explosion on hit */
 	void Explode(const FHitResult& Impact);
 	
 	/** Explode on a given position without the need to hit anything */

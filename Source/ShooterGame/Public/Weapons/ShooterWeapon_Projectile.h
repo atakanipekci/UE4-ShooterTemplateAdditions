@@ -82,9 +82,12 @@ protected:
 	/** [local] weapon specific fire implementation */
 	virtual void FireWeapon() override;
 
-	virtual void BeginPlay() override;
-
 	virtual void Tick(float DeltaSeconds) override;
+
+	/** overridden equip functions to activate and deactivate trajectory actor */
+	virtual void OnEquipFinished() override;
+
+	virtual void OnUnEquip() override;
 
 	/** Draw Trajectory for the projectile this weapon uses */
 	void DrawTrajectory();

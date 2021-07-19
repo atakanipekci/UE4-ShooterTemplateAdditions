@@ -248,9 +248,11 @@ class AShooterCharacter : public ACharacter
 	UFUNCTION(BlueprintCallable, Category = Pawn)
 	float GetRunningSpeedModifier() const;
 
+	/** Add a float to the speed modifier of this pawn */
 	UFUNCTION(BlueprintCallable, Category = Pawn)
 	void AddSpeedModifier(float Speed);
 
+	/** Get the modifier value for max speed */
 	UFUNCTION(BlueprintCallable, Category = Pawn)
 	float GetSpeedModifier() const;
 

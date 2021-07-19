@@ -64,26 +64,11 @@ void AShooterWeapon_Projectile::FireWeapon()
 	ServerFireProjectile(Origin, ShootDir);
 }
 
-void AShooterWeapon_Projectile::BeginPlay()
-{
-	Super::BeginPlay();
-	if(GetLocalRole() == ROLE_Authority)
-	{
-		TrajectorySplineActor = static_cast<ASplineActor*>(GetWorld()->SpawnActor<ASplineActor>(FVector::ZeroVector,FRotator::ZeroRotator,FActorSpawnParameters{}));
-	}
-
-	if(TrajectorySplineActor)
-	{
-		TrajectorySplineActor->SetActorScale3D(FVector{0.1,0.1,0.1});
-		TrajectorySplineActor->ClearNodes();
-		TrajectorySplineActor->SplineMeshMap = TrajectorySplineMap;
-		TrajectorySplineActor->UpdateSpline();
-	}
-}
-
 void AShooterWeapon_Projectile::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	/** If there is no dynamic object on the map that can collide with the projectile, you can optimize this to
+	 only update when player moves themselves or moves their aim*/
 	if(GetPawnOwner() && !GetPawnOwner()->IsTargeting() && !GetPawnOwner()->IsRunning())
 	{
 		DrawTrajectory();
@@ -94,8 +79,36 @@ void AShooterWeapon_Projectile::Tick(float DeltaSeconds)
 	}
 }
 
+void AShooterWeapon_Projectile::OnEquipFinished()
+{
+	Super::OnEquipFinished();
+	// Create the actor only on client side
+	if(GetPawnOwner() && GetPawnOwner()->IsLocallyControlled() && TrajectorySplineActor == nullptr)
+	{
+		TrajectorySplineActor = static_cast<ASplineActor*>(GetWorld()->SpawnActor<ASplineActor>(FVector::ZeroVector,FRotator::ZeroRotator,FActorSpawnParameters{}));
+	}
+
+	if(TrajectorySplineActor)
+	{
+		//This line is only here because I did not have any other free assets that I can use as a trajectory mesh
+		//Default Unreal meshes are way too big for trajectory so I scale it down
+		TrajectorySplineActor->SetActorScale3D(FVector{0.1,0.1,0.1});
+		TrajectorySplineActor->ClearNodes();
+		TrajectorySplineActor->SplineMeshMap = TrajectorySplineMap;
+		TrajectorySplineActor->UpdateSpline();
+		TrajectorySplineActor->SetReplicates(false);
+	}
+}
+
+void AShooterWeapon_Projectile::OnUnEquip()
+{
+	Super::OnUnEquip();
+	ClearTrajectory();
+}
+
 void AShooterWeapon_Projectile::DrawTrajectory()
 {
+	//If gravity is 0 there is no need for a trajectory
 	if(TrajectorySplineActor && ProjectileConfig.ProjectileGravityScale != 0)
 	{
 		FPredictProjectilePathResult ProjectileResult;
